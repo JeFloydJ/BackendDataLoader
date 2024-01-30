@@ -1,12 +1,5 @@
-
 import requests
-
-"""
-app de prueba:
-client_id = '14ff689a-1054-43ef-a3ec-e3137c3c4a3e'
-client_secret = 'Y/YJK4+22KtLQt4CTkA3cwVtOXh7B+jpCUQolXYdLfo='
-token_url = 'https://oauth2.sky.blackbaud.com/token'
-"""
+import webbrowser
 
 # Tus credenciales de Blackbaud ID
 client_id = "14ff689a-1054-43ef-a3ec-e3137c3c4a3e"
@@ -22,13 +15,5 @@ headers = {}
 # Realizar la solicitud de autenticación
 response = requests.request("GET", url, headers=headers, data=payload)
 
-print(response.url)
-
-"""
-# Verificar si la autenticación fue exitosa
-if response.status_code == 200:
-    print("Autenticación exitosa!")
-    access_token = response.json()["access_token"]
-else:
-    print(f"Error en la autenticación: {response.content}")
-"""
+link = response.url
+webbrowser.open(link)
