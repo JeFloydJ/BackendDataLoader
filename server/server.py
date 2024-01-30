@@ -11,7 +11,7 @@ redirect_uri = "http://localhost:8000"
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         query = urllib.parse.urlparse(self.path).query
-        query_components = dict(qc.split("=") for qc in query.split("&"))
+        query_components = dict(qc.split("=") for qc in query.split("&") if "=" in qc)
 
         if "code" in query_components:
             code = query_components["code"]
