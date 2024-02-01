@@ -30,9 +30,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             if token_response.status_code == 200:
                 access_token = token_response.json()["access_token"]
+                refresh_token = token_response.json()["refresh_token"]
                 print(f"Token de acceso recibido: {access_token}")
                 with open('token.txt', 'w') as f:
                     f.write(access_token)
+                with open('refresh_token.txt', 'w') as f:
+                    f.write(refresh_token)
             else:
                 print(f"Error al solicitar el token de acceso: {token_response.content}")
 
