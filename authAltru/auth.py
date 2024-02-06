@@ -17,5 +17,3 @@ response = requests.request("GET", url, headers=headers, data=payload)
 
 link = response.url
 webbrowser.open(link)
-
-
