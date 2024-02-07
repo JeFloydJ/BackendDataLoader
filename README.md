@@ -1,4 +1,4 @@
-# testDataLoader
+# BackendDataLoader
 
 Este proyecto utiliza un servidor local y un script de autenticación para obtener tokens de acceso tanto en altru como en salesforce. Se debe tener en cuenta que:
 - hay dos carpetas que tienen el nombre para cada uno, tanto como para salesforce tanto como para altru. Esto quiere decir que si yo quiero autorizar y obtener tokens de acceso para altru, debo ejecutar los proximos pasos en la carpetas authAltru y serverAltru y si se quiere hacer en salesforce se debe hacer lo mismo pero en las carpetas authSalesforce y serverSalesforce
