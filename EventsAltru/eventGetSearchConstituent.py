@@ -12,7 +12,7 @@ def refresh_token():
     token_url = "https://oauth2.sky.blackbaud.com/token"
 
     # Leer el token de actualización desde el archivo
-    with open('../server/refresh_token.txt', 'r') as f:
+    with open('../serverAltru/refresh_token.txt', 'r') as f:
         refresh_token = f.read().strip()
 
     # Datos para la solicitud de actualización de token
@@ -31,7 +31,7 @@ def refresh_token():
         print(f"Nuevo token de acceso: {new_access_token}")
 
         # Guardar el nuevo token de acceso
-        with open('../server/token.txt', 'w') as f:
+        with open('../serverAltru/token.txt', 'w') as f:
             f.write(new_access_token)
     else:
         print(f"Error al actualizar el token de acceso: {token_response.content}")
@@ -40,7 +40,7 @@ try:
     url = "https://api.sky.blackbaud.com/alt-conmg/constituents/search"
 
     # Leer el token de acceso desde el archivo
-    with open('../server/token.txt', 'r') as f:
+    with open('../serverAltru/token.txt', 'r') as f:
         access_token = f.read().strip()
 
     hdr = {
