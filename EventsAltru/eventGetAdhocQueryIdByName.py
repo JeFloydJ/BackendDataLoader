@@ -31,8 +31,9 @@ def refresh_token():
         print(f"Error al actualizar el token de acceso: {token_response.content}")
 
 def get_id():
+    report_name = 'test1'
     try:
-        url = "https://api.sky.blackbaud.com/alt-anamg/adhocqueries/id/test1"
+        url = f"https://api.sky.blackbaud.com/alt-anamg/adhocqueries/id/{report_name}"
 
         with open('../serverAltru/token.txt', 'r') as f:
             access_token = f.read().strip()
@@ -59,4 +60,3 @@ def get_id():
 
 # Uso de la función
 id_value = get_id()
-
