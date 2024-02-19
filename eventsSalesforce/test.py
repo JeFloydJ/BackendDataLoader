@@ -2,6 +2,12 @@ import csv
 from simple_salesforce import Salesforce
 import requests
 
+def contar_registros_grande(nombre_archivo):
+    with open(nombre_archivo, 'r') as f:
+        reader = csv.reader(f)
+        num_registros = sum(1 for row in reader) - 1  # Restamos 1 para excluir el encabezado
+    return num_registros
+
 def refresh_token():
     # Tus credenciales de Salesforce
     client_id = '3MVG9zeKbAVObYjPODek1PYnJW15VxHyhGPUOe1vzfHcg89tL_3Xyj_DCZQql_RL4Gjdnmk7EpfFk4DGDulnz'
@@ -43,7 +49,11 @@ with open('../serverSalesforce/token.txt', 'r') as f:
 sf = Salesforce(instance='veevartdevstage.my.salesforce.com', session_id=access_token)
 
 # Leer el archivo CSV
-with open('../EventsAltru/output.csv', 'r') as f:
+nombre_archivo = '../EventsAltru/output.csv'  # Asegúrate de que este sea el camino correcto a tu archivo
+num_registros = contar_registros_grande(nombre_archivo)
+print(f'El archivo tiene {num_registros} registros.')
+
+with open(nombre_archivo, 'r') as f:
     reader = csv.DictReader(f)
     contact_info_list = []
     for row in reader:
@@ -55,7 +65,7 @@ with open('../EventsAltru/output.csv', 'r') as f:
         contact_info_list.append(contact_info)
 
     try:
-        results = sf.bulk.Contact.insert(contact_info_list, batch_size=12288)
+        results = sf.bulk.Contact.insert(contact_info_list, batch_size=num_registros)
         for result in results:
             if result['success']:
                 print(f"Registro con ID {result['id']} insertado exitosamente.")
