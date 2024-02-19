@@ -6,7 +6,7 @@ Este proyecto utiliza un servidor local y un script de autenticación para obten
 ## Requisitos
 
 - Python 3
-- Bibliotecas: `requests`
+- Bibliotecas: `requests`, `simple-salesforce`
 
 ## Instalación
 
