@@ -16,6 +16,10 @@ Para instalar las dependencias necesarias, puedes usar pip:
 pip install requests
 ```
 
+-Biblioteca: `simple-salesforce`
+```bash
+pip install simple-salesforce
+```
 ## Pasos para ejecutar el proyecto
 Ejecutar el servidor: Primero, debes ejecutar el servidor local. Puedes hacer esto ejecutando el siguiente comando en tu terminal:
 
