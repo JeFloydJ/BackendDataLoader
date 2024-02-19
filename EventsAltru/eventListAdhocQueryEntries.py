@@ -34,19 +34,24 @@ def refresh_token():
         print(f"Error al actualizar el token de acceso: {token_response.content}")
 
 def get_query():
+    url = f"https://api.sky.blackbaud.com/alt-anamg/adhocqueries/{id}"
+
+    with open('../serverAltru/token.txt', 'r') as f:
+        access_token = f.read().strip()
+
+    headers = {
+        'Cache-Control': 'no-cache',
+        'Authorization': f'Bearer {access_token}',
+        'Bb-Api-Subscription-Key': 'fa43a7b522a54b718178a4af6727392f'
+    }
+
     try:
-        url = f"https://api.sky.blackbaud.com/alt-anamg/adhocqueries/{id}"
-
-        with open('../serverAltru/token.txt', 'r') as f:
-            access_token = f.read().strip()
-
-        headers = {
-            'Cache-Control': 'no-cache',
-            'Authorization': f'Bearer {access_token}',
-            'Bb-Api-Subscription-Key': 'fa43a7b522a54b718178a4af6727392f'
-        }
-
         response = requests.request("GET", url, headers=headers)
+
+        if response.status_code == 401:  # Unauthorized
+            print("El token de acceso ha expirado. Actualizando el token...")
+            refresh_token()
+            return get_query()  # Llama a la función de nuevo después de actualizar el token
 
         response_json = json.loads(response.text)
 
@@ -55,11 +60,7 @@ def get_query():
             json.dump(response_json, f)
 
     except requests.exceptions.RequestException as e:
-        if e.response.status_code == 401:  # Unauthorized
-            print("El token de acceso ha expirado. Actualizando el token...")
-            refresh_token()
-        else:
-            print(e)
+        print(e)
 
 # Uso de la función
 get_query()
