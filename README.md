@@ -40,6 +40,6 @@ se abrirán el enlace en tu navegador automaticamente, debes dar autorizar en el
 ## Obtener informacion de endpoints: 
 Después de autorizar la aplicación, se debe ejecutar el siguiente comando:
 ```bash
-python3 eventGetSearchConstituent.py
+python3 classTest.py
 ```
-y este traerá la información del endpoint
+y este migrará accounts.
