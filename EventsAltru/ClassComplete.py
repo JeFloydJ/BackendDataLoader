@@ -258,3 +258,20 @@ adapter.process_data()
                   
 # processor = DataProcessor()
 # processor.process_data()
+
+###########################################################################
+#Uso de las clases por separado
+###########################################################################
+#class SalesforceProcessor:
+# Uso de la clase
+#processor = SalesforceProcessor('../EventsAltru/output.csv')
+#processor.process_csv()
+
+
+
+# Uso de la clase
+#class DataProcessor
+#processor = DataProcessor()
+#processor.process_data()
+
+###########################################################################
