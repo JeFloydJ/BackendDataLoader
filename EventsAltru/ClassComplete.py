@@ -216,11 +216,11 @@ class SalesforceProcessor:
                 account_info = {
                     'Auctifera__Implementation_External_ID__c': row['Lookup ID'],
                     'Name': row['Name'],
-                    #'Description': row['Type'],  
+                    'Description': row['Type'],  # Asumiendo que 'Type' es la descripción
                     'Website': row['Web address'],
-                    #'RecordTypeId': record_type_id,  # Usar el ID del RecordType obtenido
+                    'RecordTypeId': record_type_id,  # Usar el ID del RecordType obtenido
                     'vnfp__Email__c': row['Email Addresses\\Email address'],
-                    #'vnfp__Do_not_Email__c': do_not_email
+                    'vnfp__Do_not_Email__c': do_not_email
                 }
                 account_info_list.append(account_info)
         try:
