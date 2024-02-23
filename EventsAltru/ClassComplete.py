@@ -137,6 +137,9 @@ class DataProcessor:
         name_index = headers.index('Name')
         last_name_index = headers.index('Last/Organization/Group/Household name')
         web_address_index = headers.index('Web address')
+        phone_index = headers.index('Phones\\Number')
+        address_index = headers.index('Addresses\\Address')
+        zip_index = headers.index('Addresses\\ZIP')
 
         for row in data:
             # Agregar "@tmail.comx" después del @ en la columna de correo electrónico
@@ -158,6 +161,18 @@ class DataProcessor:
                 protocol, rest = row[web_address_index].split('//')
                 domain, path = rest.split('.com', 1)
                 row[web_address_index] = protocol + '//website.com' + path
+
+            # Dejar solo los 3 primeros números en la columna de teléfono
+            if row[phone_index]:
+                row[phone_index] = row[phone_index][:5]
+
+            # Dejar solo lo primero antes del primer espacio en la columna de dirección
+            if row[address_index]:
+                row[address_index] = row[address_index].split()[0]
+
+            # Dejar solo los dos primeros caracteres en la columna de código postal
+            if row[zip_index]:
+                row[zip_index] = row[zip_index][:2]
 
         with open(output_csv, 'w', newline='') as f:
             writer = csv.writer(f)
@@ -216,20 +231,31 @@ class SalesforceProcessor:
                 account_info = {
                     'Auctifera__Implementation_External_ID__c': row['Lookup ID'],
                     'Name': row['Name'],
-                    'Description': row['Type'],  # Asumiendo que 'Type' es la descripción
+                    'Description': row['Type'],  
                     'Website': row['Web address'],
                     'RecordTypeId': record_type_id,  # Usar el ID del RecordType obtenido
                     'vnfp__Email__c': row['Email Addresses\\Email address'],
-                    'vnfp__Do_not_Email__c': do_not_email
+                    'vnfp__Do_not_Email__c': do_not_email,
+                    #'BillingAddress' : row['Addresses\\City'],
+                    'BillingCity' : row['Addresses\\City'], 
+                    'BillingState' : row['Addresses\\State'],
+                    'BillingPostalCode' : row['Addresses\\ZIP'],
+                    'BillingCountry' : row['Addresses\\Country'],
+                    'LatestStart Date' : row['Addresses\\Start date '],
+                    'LatestEnd Date' : row['Addresses\\End date'],
+                    'AddressType' : row['Addresses\\Type'],
+                    'Phone' : row['Phones\\Number'],
+                    #'Do not call' : row['Phones\\Do not call']
                 }
                 account_info_list.append(account_info)
         try:
-            results = self.sf.bulk.Account.insert(account_info_list, batch_size=num_registros)
+            results = self.sf.bulk.Account.upsert(account_info_list, 'Auctifera__Implementation_External_ID__c', batch_size=num_registros)
             for result in results:
                 if result['success']:
-                    print(f"Registro con ID {result['id']} insertado exitosamente.")
+                    print(f"Registro con ID {result['id']} actualizado o insertado exitosamente.")
                 else:
-                    print(f"Error al insertar el registro: {result['errors']}")
+                    print(f"Error al actualizar o insertar el registro: {result['errors']}")
+
         except Exception as e:
             if 'INVALID_SESSION_ID' in str(e):  # El token de acceso ha expirado
                 print("El token de acceso ha expirado. Actualizando el token...")
@@ -240,8 +266,6 @@ class SalesforceProcessor:
                     self.sf = Salesforce(instance='energy-customer-8575-dev-ed.scratch.my.salesforce.com', session_id=access_token)
             else:
                 print(e)
-            
-
 
 class Adapter:
      def __init__(self, csv_file_path):
@@ -271,7 +295,7 @@ adapter.process_data()
 
 # Uso de la clase
 #class DataProcessor
-#processor = DataProcessor()
-#processor.process_data()
+# processor = DataProcessor()
+# processor.process_data()
 
 ###########################################################################
