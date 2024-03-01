@@ -318,7 +318,7 @@ class Adapter:
         for report_name, salesforce_processor in self.salesforce_processors:
             salesforce_processor.process_csv()
 
-report_names = ["Veevart Organization Addresses Report test"] #"Veevart Organization Phones Report test"]
+report_names = ["Veevart Organizations Report test","Veevart Organization Addresses Report test"] #"Veevart Organization Phones Report test"]
 adapter = Adapter(report_names)
 adapter.process_data()
 
