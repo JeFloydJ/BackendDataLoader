@@ -1,4 +1,3 @@
-import datetime
 import requests
 import ssl
 import json
@@ -245,162 +244,83 @@ class DataProcessor:
                 self.modificar_csv_telefonos(f'{report_name}_output.csv', f'{report_name}_output.csv')
 
 
-
 class SalesforceProcessor:
-    def __init__(self, csv_file_path):
+    def __init__(self, report_name):
         self.client_id = '3MVG9zeKbAVObYjPODek1PYnJW15VxHyhGPUOe1vzfHcg89tL_3Xyj_DCZQql_RL4Gjdnmk7EpfFk4DGDulnz'
         self.client_secret = '6003041383007768349'  
         self.redirect_uri = "http://localhost:8000"
         self.token_url = "https://test.salesforce.com/services/oauth2/token"
-        self.csv_file_path = csv_file_path
+        self.report_name = report_name
+        self.address_list = []
+        self.account_list = []
 
         with open('../serverSalesforce/token.txt', 'r') as f:
             self.access_token = f.read().strip()
         self.sf = Salesforce(instance='energy-customer-8575-dev-ed.scratch.my.salesforce.com', session_id=self.access_token)
 
-    def contar_registros_grande(self, nombre_archivo):
-        with open(nombre_archivo, 'r') as f:
-            reader = csv.reader(f)
-            num_registros = sum(1 for row in reader) - 1  # Restamos 1 para excluir el encabezado
-        return num_registros
-    
-    def check_custom_object_exists(self, object_name):
-        try:
-            getattr(self.sf, object_name).describe()
-            return True
-        except Exception as e:
-            return False
+    def handle_organizations_report(self, row):
+        account_info = {
+            'Auctifera__Implementation_External_ID__c': row['Lookup ID'],
+            'Name': row['Name'],
+            'Website': row['Web address'],
+            'vnfp__Email__c': row['Email Addresses\\Email address'],
+        }
+        if all(value != '' for value in account_info.values()):
+            self.account_list.append(account_info)  
 
+    def handle_addresses_report(self, row):
+        lookup_id = row['Lookup ID']
+        addresses_info = {
+            'npsp__MailingStreet__c': str(row['Addresses\\Address']),
+            'npsp__MailingCity__c': str(row['Addresses\\City']),
+            'npsp__MailingState__c': str(row['Addresses\\State']),
+            'npsp__MailingPostalCode__c': str(row['Addresses\\ZIP']),
+            'npsp__MailingCountry__c': str(row['Addresses\\Country']),
+            'npsp__Household_Account__r': {'Auctifera__Implementation_External_ID__c': lookup_id} # upsert
+        }
+        if all(value != '' for value in addresses_info.values()):
+            self.address_list.append(addresses_info)
 
-    # Modificar el método process_csv para manejar múltiples números de teléfono por cuenta
-    def process_csv(self, report_names):
+        # def handle_phones_report(self, row):
+        #     phone_info = {
+        #         'Phone__c': row['Phones\\Number'],
+        #         'Do_not_call__c': row['Phones\\Do not call'].lower() == 'true',
+        #     }
+        #     # Verificar si la cuenta ya tiene un teléfono
+        #     account = self.sf.Account.get_by_custom_id('Auctifera__Implementation_External_ID__c', row['Lookup ID'])
+        #     if account['Phone']:
+        #         # Si la cuenta ya tiene un teléfono, crear uno nuevo y relacionarlo con la cuenta
+        #         self.sf.Phone.create(phone_info)
+        #     else:
+        #         # Si la cuenta no tiene un teléfono, actualizar la cuenta con el nuevo teléfono
+        #         self.sf.Account.update(account['Id'], phone_info)
 
-        # if not SalesforceProcessor.check_custom_object_exists(self.sf, "Phone__c"):
-        #     mdapi = self.sf.mdapi
-        #     custom_object = mdapi.CustomObject(
-        #         fullName = "Phone__c",
-        #         label = "Phone",
-        #         pluralLabel = "Phones",
-        #         nameField = mdapi.CustomField(
-        #             label = "Name",
-        #             type = mdapi.FieldType("Text")
-        #         ),
-        #         deploymentStatus = mdapi.DeploymentStatus("Deployed"),
-        #         sharingModel = mdapi.SharingModel("Read")
-        #     )
-
-        #     mdapi.CustomObject.create(custom_object)
-
-        #     # Crear los campos Phone y Do not call
-        #     phone_field = mdapi.CustomField(
-        #         fullName = "Phone__c.Phone__c",
-        #         label = "Phone",
-        #         type = mdapi.FieldType("Phone"),
-        #         required = False
-        #     )
-
-        #     do_not_call_field = mdapi.CustomField(
-        #         fullName = "Phone__c.Do_not_call__c",
-        #         label = "Do not call",
-        #         type = mdapi.FieldType("Checkbox"),
-        #         defaultValue = False
-        #     )
-
-        #     mdapi.CustomField.create(phone_field)
-        #     mdapi.CustomField.create(do_not_call_field)
-
-        for report_name in report_names:
-            num_registros = self.contar_registros_grande(f'{report_name}_output.csv')
-            print(f'El archivo tiene {num_registros} registros.')
-
-            with open(f'{report_name}_output.csv', 'r') as f:
-                reader = csv.DictReader(f)
-                account_info_list = []
-                for row in reader:
-                    # Obtener el ID del RecordType basado en el valor del campo 'Type'
-                    ##record_type = self.sf.query(f"SELECT Id FROM RecordType WHERE DeveloperName = '{row['Type']}' AND isActive = TRUE")
-                    #record_type_id = record_type['records'][0]['Id'] if record_type['records'] else ''
-                    if report_name == 'Veevart Organizations Report test_output.csv':
-                        account_info = {
-                            'Auctifera__Implementation_External_ID__c': row['Lookup ID'],
-                            'Name': row['Name'],
-                            'Website': row['Web address'],
-                            'vnfp__Email__c': row['Email Addresses\\Email address'],
-                        }
-                        account_info_list.append(account_info)
-
-                        if report_name == "Veevart Organization Phones Report test_output.csv":
-                            # Crear un nuevo objeto de teléfono
-                            phone_info = {
-                                'Phone__c': row['Phones\\Number'],
-                                'Do_not_call__c': row['Phones\\Do not call'].lower() == 'true',
-                            }
-
-                            # Verificar si la cuenta ya tiene un número de teléfono
-                            account = self.sf.Account.get_by_custom_id('Auctifera__Implementation_External_ID__c', row['Lookup ID'])
-
-                            if account['Phone']:
-                                # Si la cuenta ya tiene un número de teléfono, crear un nuevo objeto de teléfono y relacionarlo con la cuenta
-                                phone_info['AccountId__c'] = account['Id']
-                                self.sf.Phone__c.create(phone_info)
-                            else:
-                                # Si la cuenta no tiene un número de teléfono, actualizar el número de teléfono de la cuenta
-                                self.sf.Account.update(account['Id'], {'Phone': phone_info['Phone__c']})
-
-                        if report_name == "Veevart Organization Addresses Report test_output.csv":
-                            # Crear un nuevo objeto de dirección
-                            address_info = {
-                                'BillingStreet': row['Addresses\\Address'],
-                                'BillingCity': row['Addresses\\City'],
-                                'BillingState': row['Addresses\\State'],
-                                'BillingPostalCode': row['Addresses\\ZIP'],
-                                'BillingCountry': row['Addresses\\Country'],
-                            }
-
-                            # Verificar si la cuenta ya tiene una dirección
-                            account = self.sf.Account.get_by_custom_id('Auctifera__Implementation_External_ID__c', row['Lookup ID'])
-
-                            if account['BillingStreet']:
-                                # Si la cuenta ya tiene una dirección, crear un nuevo objeto de dirección y relacionarlo con la cuenta
-                                address_info['AccountId__c'] = account['Id']
-                                self.sf.Address.create(address_info)
-                            else:
-                                # Si la cuenta no tiene una dirección, actualizar la dirección de la cuenta
-                                self.sf.Account.update(account['Id'], address_info)
-
-            try:
-                results = self.sf.bulk.Account.upsert(account_info_list, 'Auctifera__Implementation_External_ID__c', batch_size=num_registros)
-                for result in results:
-                    if result['success']:
-                        print(f"Registro con ID {result['id']} actualizado o insertado exitosamente.")
-                    else:
-                        print(f"Error al actualizar o insertar el registro: {result['errors']}")
-
-            except Exception as e:
-                if 'INVALID_SESSION_ID' in str(e):  # El token de acceso ha expirado
-                    print("El token de acceso ha expirado. Actualizando el token...")
-                    access_token = self.refresh_token()
-                    if access_token is None:
-                        print("No se pudo actualizar el token de acceso. Por favor, verifica tus credenciales y vuelve a intentarlo.")
-                    else:
-                        self.sf = Salesforce(instance='energy-customer-8575-dev-ed.scratch.my.salesforce.com', session_id=access_token)
-                else:
-                    print(e)
+    def process_csv(self):
+        with open(f'{self.report_name}_output.csv', 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if 'Veevart Organization Addresses Report' in self.report_name:
+                    self.handle_addresses_report(row)
+                elif 'Veevart Organization Report' in self.report_name:  # Asume que este es el nombre correcto
+                    self.handle_organizations_report(row)
+        if self.address_list:
+            self.sf.bulk.npsp__Address__c.insert(self.address_list, batch_size='auto',use_serial=True)
+        if self.account_list:  
+            self.sf.bulk.Account.upsert(self.account_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)
 
 class Adapter:
     def __init__(self, report_names):
         self.data_processor = DataProcessor()
-        self.salesforce_processors = [SalesforceProcessor(report_name) for report_name in report_names]
+        self.salesforce_processors = [(report_name, SalesforceProcessor(report_name)) for report_name in report_names]
 
     def process_data(self):
         self.data_processor.process_data()
-        for salesforce_processor in self.salesforce_processors:
-            salesforce_processor.process_csv(report_names)
+        for report_name, salesforce_processor in self.salesforce_processors:
+            salesforce_processor.process_csv()
 
-report_names = ["Veevart Organizations Report test", "Veevart Organization Addresses Report test", "Veevart Organization Phones Report test"]
+report_names = ["Veevart Organization Addresses Report test"] #"Veevart Organization Phones Report test"]
 adapter = Adapter(report_names)
 adapter.process_data()
-
 
 ###########################################################################
 #Uso de las clases por separado
