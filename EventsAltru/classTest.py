@@ -4,7 +4,6 @@ import json
 import csv
 from simple_salesforce import Salesforce
 
-
 class DataProcessor:
     def __init__(self):
         self.client_id = "14ff689a-1054-43ef-a3ec-e3137c3c4a3e"
@@ -253,6 +252,9 @@ class SalesforceProcessor:
         self.report_name = report_name
         self.address_list = []
         self.account_list = []
+        self.phone_list = []
+        self.phone_act_list = []
+        self.address_act_list = []
 
         with open('../serverSalesforce/token.txt', 'r') as f:
             self.access_token = f.read().strip()
@@ -263,37 +265,55 @@ class SalesforceProcessor:
             'Auctifera__Implementation_External_ID__c': row['Lookup ID'],
             'Name': row['Name'],
             'Website': row['Web address'],
-            'vnfp__Email__c': row['Email Addresses\\Email address'],
+            'vnfp__Do_not_Email__c' : row['Email Addresses\\Do not email'],
+            'vnfp__Email__c': row['Email Addresses\\Email address']
         }
-        if all(value != '' for value in account_info.values()):
-            self.account_list.append(account_info)  
+        self.account_list.append(account_info)  
 
     def handle_addresses_report(self, row):
         lookup_id = row['Lookup ID']
         addresses_info = {
-            'npsp__MailingStreet__c': str(row['Addresses\\Address']),
-            'npsp__MailingCity__c': str(row['Addresses\\City']),
-            'npsp__MailingState__c': str(row['Addresses\\State']),
-            'npsp__MailingPostalCode__c': str(row['Addresses\\ZIP']),
-            'npsp__MailingCountry__c': str(row['Addresses\\Country']),
+            'npsp__MailingStreet__c': row['Addresses\\Address'],
+            'npsp__MailingCity__c': row['Addresses\\City'],
+            'npsp__MailingState__c': row['Addresses\\State'],
+            'npsp__MailingPostalCode__c': row['Addresses\\ZIP'],
+            'npsp__MailingCountry__c': row['Addresses\\Country'],
+            'npsp__Default_Address__c' : row['Addresses\\Address'],
             'npsp__Household_Account__r': {'Auctifera__Implementation_External_ID__c': lookup_id} # upsert
         }
-        if all(value != '' for value in addresses_info.values()):
-            self.address_list.append(addresses_info)
+        self.address_list.append(addresses_info)
 
-        # def handle_phones_report(self, row):
-        #     phone_info = {
-        #         'Phone__c': row['Phones\\Number'],
-        #         'Do_not_call__c': row['Phones\\Do not call'].lower() == 'true',
-        #     }
-        #     # Verificar si la cuenta ya tiene un teléfono
-        #     account = self.sf.Account.get_by_custom_id('Auctifera__Implementation_External_ID__c', row['Lookup ID'])
-        #     if account['Phone']:
-        #         # Si la cuenta ya tiene un teléfono, crear uno nuevo y relacionarlo con la cuenta
-        #         self.sf.Phone.create(phone_info)
-        #     else:
-        #         # Si la cuenta no tiene un teléfono, actualizar la cuenta con el nuevo teléfono
-        #         self.sf.Account.update(account['Id'], phone_info)
+    def handle_phone_report(self, row):
+        lookup_id = row['Lookup ID']
+        phone_info = {
+            'vnfp__number__c' : row['Phones\\Number'],
+            'vnfp__Do_not_call__c' : row['Phones\\Do not call'],
+            'vnfp__Account__r': {'Auctifera__Implementation_External_ID__c': lookup_id}
+        }
+        self.phone_list.append(phone_info)
+
+    def handler_update_phone_organization(self, row):
+        valid = row['Phones\\Primary phone number']
+        new_info = {
+            'Auctifera__Implementation_External_ID__c': row['Lookup ID'], 
+            'Phone' : row['Phones\\Number']
+        }
+        if(valid):
+            self.phone_act_list.append(new_info)            
+
+    def handler_update_address_organization(self, row):
+        valid = row['Addresses\\Primary address']
+        new_info = {
+            'Auctifera__Implementation_External_ID__c': row['Lookup ID'], 
+            #'npsp__Default_Address__c' : row['Addresses\\Address']
+            'BillingStreet' : row['Addresses\\Address'],
+            'BillingCity' : row['Addresses\\City'],
+            'BillingState' : row['Addresses\\State'],
+            'BillingPostalCode' : row['Addresses\\ZIP'] ,
+            'BillingCountry' : row['Addresses\\Country'],
+        }
+        if(valid):
+            self.address_act_list.append(new_info)            
 
     def process_csv(self):
         with open(f'{self.report_name}_output.csv', 'r') as f:
@@ -301,12 +321,25 @@ class SalesforceProcessor:
             for row in reader:
                 if 'Veevart Organization Addresses Report' in self.report_name:
                     self.handle_addresses_report(row)
+                    self.handler_update_address_organization(row)
                 elif 'Veevart Organization Report' in self.report_name: 
                     self.handle_organizations_report(row)
+                elif 'Veevart Organization Phones Report' in self.report_name: 
+                    self.handle_phone_report(row)
+                    self.handler_update_phone_organization(row)
+
         if self.address_list:
             self.sf.bulk.npsp__Address__c.insert(self.address_list, batch_size='auto',use_serial=True)
         if self.account_list:  
             self.sf.bulk.Account.upsert(self.account_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)
+        if self.phone_list:
+            self.sf.bulk.vnfp__Phone__c.insert(self.phone_list, batch_size = 'auto', use_serial = True)
+        if self.phone_act_list:
+            self.sf.bulk.Account.upsert(self.phone_act_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)
+        if self.address_act_list:
+            #self.sf.bulk.npsp__Address__c.insert(self.address_list, batch_size='auto',use_serial=True)
+            self.sf.bulk.Account.upsert(self.address_act_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)
+
 
 class Adapter:
     def __init__(self, report_names):
@@ -318,7 +351,7 @@ class Adapter:
         for report_name, salesforce_processor in self.salesforce_processors:
             salesforce_processor.process_csv()
 
-report_names = ["Veevart Organization Addresses Report test"] #"Veevart Organization Phones Report test"]
+report_names = ["Veevart Organizations Report test","Veevart Organization Addresses Report test", "Veevart Organization Phones Report test"]
 adapter = Adapter(report_names)
 adapter.process_data()
 
