@@ -2,7 +2,7 @@ import requests
 import ssl
 import json
 import csv
-from simple_salesforce import Salesforce
+from simple_salesforce import Salesforce, format_soql
 
 class DataProcessor:
     def __init__(self):
@@ -107,23 +107,25 @@ class DataProcessor:
             for row in data['rows']:
                 writer.writerow(row)
 
-    def eliminar_columnas(self, csv_input, headers_eliminar, csv_output):
-        # Leer el archivo CSV
-        with open(csv_input, 'r') as f:
-            rows = list(csv.reader(f))
-        
-        headers = rows[0]
-        
-        # Encontrar los índices de las columnas a eliminar
-        indices_eliminar = [headers.index(header) for header in headers_eliminar if header in headers]
-        
-        # Eliminar las columnas
-        rows = [[value for i, value in enumerate(row) if i not in indices_eliminar] for row in rows]
-        
-        # Guardar las filas en un nuevo archivo CSV
-        with open(csv_output, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(rows)
+    #parameters: input csv for change information, csv with changed information
+    #description: change personal information in csv file
+    #return: csv file with changed information
+    def modify_csv_households(self, input_csv, output_csv):
+            with open(input_csv, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader)
+                data = list(reader)
+                name_index = headers.index('Name')
+
+                for row in data:
+                    # Dejar solo la primera letra en la columna de nombre
+                    if row[name_index]:
+                        row[name_index] = row[name_index][:5]
+
+                with open(output_csv, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(data)
 
     def modificar_csv_nombres(self, input_csv, output_csv):
         with open(input_csv, 'r') as f:
@@ -167,7 +169,9 @@ class DataProcessor:
             data = list(reader)
             name_index = headers.index('Name')
             last_name_index = headers.index('Last/Organization/Group/Household name')
-
+            address_index = headers.index('Addresses\\Address')
+            zip_index = headers.index('Addresses\\ZIP')
+            
             for row in data:
                 # Dejar solo la primera letra en la columna de nombre
                 if row[name_index]:
@@ -178,11 +182,6 @@ class DataProcessor:
                     first_word = row[last_name_index].split()[0]
                     row[last_name_index] = 'x' + first_word + 'x'
 
-
-            address_index = headers.index('Addresses\\Address')
-            zip_index = headers.index('Addresses\\ZIP')
-
-            for row in data:
                 # Dejar solo lo primero antes del primer espacio en la columna de dirección
                 if row[address_index]:
                     row[address_index] = row[address_index].split()[0]
@@ -203,6 +202,7 @@ class DataProcessor:
             data = list(reader)
             name_index = headers.index('Name')
             last_name_index = headers.index('Last/Organization/Group/Household name')
+            phone_index = headers.index('Phones\\Number')
 
             for row in data:
                 # Dejar solo la primera letra en la columna de nombre
@@ -214,10 +214,6 @@ class DataProcessor:
                     first_word = row[last_name_index].split()[0]
                     row[last_name_index] = 'x' + first_word + 'x'
 
-
-            phone_index = headers.index('Phones\\Number')
-
-            for row in data:
                 # Dejar solo los 3 primeros números en la columna de teléfono
                 if row[phone_index]:
                     row[phone_index] = row[phone_index][:5]
@@ -227,21 +223,156 @@ class DataProcessor:
                 writer.writerow(headers)
                 writer.writerows(data)
 
+    #parameters: input csv for change information, csv with changed information
+    #description: change personal information in csv file
+    #return: csv file with changed information
+    def modify_csv_contacs_address(self, input_csv, output_csv):
+            with open(input_csv, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader)
+                data = list(reader)
+                name_index = headers.index('Name')
+                last_name_index = headers.index('Last/Organization/Group/Household name')
+                
+                address_index = headers.index('Addresses\\Address')
+                zip_index = headers.index('Addresses\\ZIP')
+
+                for row in data:
+                    # Dejar solo lo primero antes del primer espacio en la columna de dirección
+                    if row[address_index]:
+                        row[address_index] = row[address_index].split()[0]
+
+                    # Dejar solo los dos primeros caracteres en la columna de código postal
+                    if row[zip_index]:
+                        row[zip_index] = row[zip_index][:2]
+
+                    # Dejar solo la primera letra en la columna de nombre
+                    if row[name_index]:
+                        row[name_index] = row[name_index][:5]
+
+                # Dejar solo la primera palabra en la columna de apellido y agregar 'x' al principio y al final
+                    if row[last_name_index]:
+                        first_word = row[last_name_index].split()[0]
+                        row[last_name_index] = 'x' + first_word + 'x'
+
+                with open(output_csv, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(data)
+
+    #parameters: input csv for change information, csv with changed information
+    #description: change personal information in csv file
+    #return: csv file with changed information
+    def modify_csv_contacs_email(self, input_csv, output_csv):
+            with open(input_csv, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader)
+                data = list(reader)
+                name_index = headers.index('Name')
+                last_name_index = headers.index('Last/Organization/Group/Household name')                
+                email_index = headers.index('Email Addresses\\Email address')
+
+                for row in data:
+                    # Dejar solo la primera letra en la columna de nombre
+                    if row[name_index]:
+                        row[name_index] = row[name_index][:5]
+
+                # Dejar solo la primera palabra en la columna de apellido y agregar 'x' al principio y al final
+                    if row[last_name_index]:
+                        first_word = row[last_name_index].split()[0]
+                        row[last_name_index] = 'x' + first_word + 'x'
+
+                    # Agregar "@tmail.comx" después del @ en la columna de correo electrónico
+                    if '@' in row[email_index]:
+                        local, domain = row[email_index].split('@')
+                        row[email_index] = local + '@tmail.comx'
+
+                with open(output_csv, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(data)
+
+    #parameters: input csv for change information, csv with changed information
+    #description: change personal information in csv file
+    #return: csv file with changed information
+    def modify_csv_contacs(self, input_csv, output_csv):
+            with open(input_csv, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader)
+                data = list(reader)
+                name_index = headers.index('Name')
+                last_name_index = headers.index('Last/Organization/Group/Household name') 
+
+                for row in data:
+                    # Dejar solo la primera letra en la columna de nombre
+                    if row[name_index]:
+                        row[name_index] = row[name_index][:5]
+
+                # Dejar solo la primera palabra en la columna de apellido y agregar 'x' al principio y al final
+                    if row[last_name_index]:
+                        first_word = row[last_name_index].split()[0]
+                        row[last_name_index] = 'x' + first_word + 'x'
+
+
+                with open(output_csv, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(data)
+
+    #parameters: input csv for change information, csv with changed information
+    #description: change personal information in csv file
+    #return: csv file with changed information
+    def modify_csv_phones(self, input_csv, output_csv):
+        with open(input_csv, 'r') as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+            data = list(reader)
+            name_index = headers.index('Name')
+            last_name_index = headers.index('Last/Organization/Group/Household name')
+            phone_index = headers.index('Phones\\Number')
+
+            for row in data:
+                # Dejar solo la primera letra en la columna de nombre
+                if row[name_index]:
+                    row[name_index] = row[name_index][:5]
+
+                # Dejar solo la primera palabra en la columna de apellido y agregar 'x' al principio y al final
+                if row[last_name_index]:
+                    first_word = row[last_name_index].split()[0]
+                    row[last_name_index] = 'x' + first_word + 'x'
+
+                # Dejar solo los 3 primeros números en la columna de teléfono
+                if row[phone_index]:
+                    row[phone_index] = row[phone_index][:5]
+
+            with open(output_csv, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(headers)
+                writer.writerows(data)
+
+
     def process_data(self):
-        report_names = ["Veevart Organizations Report test", "Veevart Organization Addresses Report test", "Veevart Organization Phones Report test"]
+        report_names = ["Veevart Organizations Report test", "Veevart Organization Addresses Report test", "Veevart Organization Phones Report test", "Veevart HouseHolds Report test", "Veevart Contacts Report test", "Veevart Contacts Report Address test", "Veevart Contacts Report Email test", "Veevart Contacts Report Email test", "Veevart Contacts Report Phones test"]
         for report_name in report_names:
             id_value = self.get_id(report_name)
             self.get_query(id_value, report_name)
             self.json_to_csv(f'{report_name}_response.json', f'{report_name}_output.csv')
-            headers_eliminar = ["QUERYRECID"]
-            self.eliminar_columnas(f'{report_name}_output.csv', headers_eliminar, f'{report_name}_output.csv')
             if report_name == "Veevart Organizations Report test":
                 self.modificar_csv_nombres(f'{report_name}_output.csv', f'{report_name}_output.csv')
             elif report_name == "Veevart Organization Addresses Report test":
                 self.modificar_csv_direcciones(f'{report_name}_output.csv', f'{report_name}_output.csv')
             elif report_name == "Veevart Organization Phones Report test":
                 self.modificar_csv_telefonos(f'{report_name}_output.csv', f'{report_name}_output.csv')
-
+            elif report_name == "Veevart HouseHolds Report test":
+                self.modify_csv_households(f'{report_name}_output.csv', f'{report_name}_output.csv')
+            elif report_name == "Veevart Contacts Report Address test":
+                self.modify_csv_contacs_address(f'{report_name}_output.csv', f'{report_name}_output.csv')
+            elif report_name == "Veevart Contacts Report Email test":
+                self.modify_csv_contacs_email(f'{report_name}_output.csv', f'{report_name}_output.csv')
+            elif report_name == "Veevart Contacts Report test":
+                self.modify_csv_contacs(f'{report_name}_output.csv', f'{report_name}_output.csv')
+            elif report_name == "Veevart Contacts Report Phones test":
+                self.modify_csv_phones(f'{report_name}_output.csv', f'{report_name}_output.csv')
 
 class SalesforceProcessor:
     def __init__(self, report_name):
@@ -255,13 +386,46 @@ class SalesforceProcessor:
         self.phone_list = []
         self.phone_act_list = []
         self.address_act_list = []
-
+        self.houseHolds_list = []
+        self.contacts_list = []
+        self.contacts_phones_list = []
+        self.contacts_emails_list = []
+        self.contacts_address_list = []
+        self.contacts_id_list = []
+        self.contacts_accounts_id = {}
         with open('../serverSalesforce/token.txt', 'r') as f:
             self.access_token = f.read().strip()
         self.sf = Salesforce(instance='energy-customer-8575-dev-ed.scratch.my.salesforce.com', session_id=self.access_token)
 
+        self.organizations_id = self.get_organizations_id() #id of organizations
+        self.households_id = self.get_households_id() #id of households
+
+    #parameters: 
+    #description: get recordTypeId for households in org
+    #return: return Id of households
+    def get_households_id(self):
+        query = self.sf.query("SELECT Id FROM RecordType WHERE DeveloperName = 'HH_Account' AND IsActive = true")
+        Id = query['records'][0]['Id']
+        return Id
+    
+    def get_account_id(self, ids):
+        query = {}
+        ans = self.sf.query(format_soql("SELECT AccountId, Auctifera__Implementation_External_ID__c  FROM Contact WHERE Id IN {ids}", ids=ids))
+        for record in ans['records']:
+            query[record['Auctifera__Implementation_External_ID__c']] = record['AccountId']
+        return query
+
+    #parameters: 
+    #description: get recordTypeId for organizations in org
+    #return: return Id of organizations
+    def get_organizations_id(self):
+        query = self.sf.query("SELECT Id FROM RecordType WHERE DeveloperName = 'organization' AND IsActive = true")
+        Id = query['records'][0]['Id']
+        return Id
+    
     def handle_organizations_report(self, row):
         account_info = {
+            'RecordTypeId': self.organizations_id,
             'Auctifera__Implementation_External_ID__c': row['Lookup ID'],
             'Name': row['Name'],
             'Website': row['Web address'],
@@ -286,8 +450,9 @@ class SalesforceProcessor:
     def handle_phone_report(self, row):
         lookup_id = row['Lookup ID']
         phone_info = {
-            'vnfp__number__c' : row['Phones\\Number'],
-            'vnfp__Do_not_call__c' : row['Phones\\Do not call'],
+            'vnfp__Type__c' : 'Phone',
+            'vnfp__value__c' : row['Phones\\Number'],
+            #'vnfp__Do_not_call__c' : row['Phones\\Do not call'],
             'vnfp__Account__r': {'Auctifera__Implementation_External_ID__c': lookup_id}
         }
         self.phone_list.append(phone_info)
@@ -315,32 +480,156 @@ class SalesforceProcessor:
         if(valid):
             self.address_act_list.append(new_info)            
 
+    #parameters: row with information of households
+    #description: sent households info to salesforce
+    #return: add information in a list for sent
+    def handler_households(self, row):
+        #object with info to sent 
+        households_info = {
+            'RecordTypeId': self.households_id,
+            'Auctifera__Implementation_External_ID__c': row['QUERYRECID'],
+            'Name': row['Name']
+        }
+        #add info to list
+        self.houseHolds_list.append(households_info)
+
+    #parameters: row with information of contacts
+    #description: sent contacts info to salesforce
+    #return: add information in a list for sent
+    def handler_contacts(self, row):
+        #object with info to sent
+        account = row['Households Belonging To\\Household Record ID'] 
+        gender = '' if row['Gender'] == 'Unknown' else row['Gender'] 
+        primary_contact = False if row['Households Belonging To\\Is primary contact'] == '' or row['Households Belonging To\\Is primary contact'] == False else True
+        contacts_info = {
+            #'Salutation' : row['Title'],
+            'FirstName' : row['First name'],
+            'LastName' : row['Last/Organization/Group/Household name'],
+            'Auctifera__Implementation_External_ID__c' : row['Lookup ID'],
+            # 'Description' : row['Notes\\Notes']
+            #'GenderIdentity' : row['Gender']
+        }
+        if account != '':
+            contacts_info['Account'] = {'Auctifera__Implementation_External_ID__c': account}
+        # print(contacts_info)
+        self.contacts_list.append(contacts_info)
+
+    #parameters: row with phones information of the contacts
+    #description: sent contacts info to salesforce
+    #return: add information in a list for sent
+    def handle_contacts_phone_report(self, row):
+        lookup_id = row['Lookup ID']
+        phone_info = {
+            'vnfp__Type__c' : 'Phone',
+            'vnfp__value__c' : row['Phones\\Number'],
+            #'vnfp__Do_not_call__c' : row['Phones\\Do not call'],
+            'vnfp__Contact__r': {'Auctifera__Implementation_External_ID__c': lookup_id}
+        }
+        self.contacts_phones_list.append(phone_info)
+
+    #parameters: row with emails information of contacts
+    #description: sent contacts info to salesforce
+    #return: add information in a list for sent
+    def handle_contacts_emails_report(self, row):
+        lookup_id = row['Lookup ID']
+        email_info = {
+            'vnfp__Type__c' : 'Email',
+            'vnfp__value__c' : row['Email Addresses\\Email address'],
+            #'vnfp__Do_not_call__c' : row['Phones\\Do not call'],
+            'vnfp__Contact__r': {'Auctifera__Implementation_External_ID__c': lookup_id}
+        }
+        self.contacts_emails_list.append(email_info)
+
+    def handle_contacts_addresses_report(self, row):
+        lookup_id = row['Lookup ID']
+        primary_address = row['Addresses\\Primary address']
+        primary_address = False if row['Addresses\\Primary address'] == '' or row['Addresses\\Primary address'] == False else True
+        addresses_info = {
+            'npsp__MailingStreet__c': row['Addresses\\Address'],
+            'npsp__MailingCity__c': row['Addresses\\City'],
+            'npsp__MailingState__c': row['Addresses\\State'],
+            'npsp__MailingPostalCode__c': row['Addresses\\ZIP'],
+            'npsp__MailingCountry__c': row['Addresses\\Country'],
+            #'npsp__Household_Account__c': self.contacts_accounts_id[lookup_id]
+        }
+        if(primary_address):
+            addresses_info['npsp__Default_Address__c'] = row['Addresses\\Address']
+        
+        self.contacts_address_list.append(addresses_info)
+
     def process_csv(self):
         with open(f'{self.report_name}_output.csv', 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if 'Veevart Organization Addresses Report' in self.report_name:
-                    self.handle_addresses_report(row)
-                    self.handler_update_address_organization(row)
-                elif 'Veevart Organization Report' in self.report_name: 
-                    self.handle_organizations_report(row)
-                elif 'Veevart Organization Phones Report' in self.report_name: 
-                    self.handle_phone_report(row)
-                    self.handler_update_phone_organization(row)
+                # if 'Veevart Organization Addresses Report test' == self.report_name:
+                #     self.handle_addresses_report(row)
+                #     self.handler_update_address_organization(row)
+                # elif 'Veevart Organization Report test' == self.report_name: 
+                #     self.handle_organizations_report(row)
+                # elif 'Veevart Organization Phones Report test' == self.report_name: 
+                #     self.handle_phone_report(row)
+                #     self.handler_update_phone_organization(row)
+                # elif 'Veevart HouseHolds Report test' == self.report_name:
+                #     self.handler_households(row)
+                if 'Veevart Contacts Report test' == self.report_name:
+                    self.handler_contacts(row)
+                # elif 'Veevart Contacts Report Phones test' == self.report_name:
+                #     self.handle_contacts_phone_report(row)
+                # elif 'Veevart Contacts Report Email test' == self.report_name:
+                #     self.handle_contacts_emails_report(row)
+                elif 'Veevart Contacts Report Address test' == self.report_name:
+                    self.handle_contacts_addresses_report(row)
+                    
+    
+                    
+            # #if the list are not empty 
+            # if self.address_list:
+            #         self.sf.bulk.npsp__Address__c.insert(self.address_list, batch_size='auto',use_serial=True) #sent information in address object
+            
+            # #if the list are not empty 
+            # if self.account_list:
+            #     self.sf.bulk.Account.upsert(self.account_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)  # update info in account object
+            
+            # #if the list are not empty 
+            # #print(self.phone_list)
+            # if self.phone_list:
+            #    #self.sf.bulk.vnfp__Legacy_Data__c.upsert(self.phone_list, 'Auctifera__Implementation_External_ID__c', batch_size = 'auto', use_serial = True) #sent information in address object
+            #     self.sf.bulk.vnfp__Legacy_Data__c.insert(self.phone_list, batch_size='auto',use_serial=True) #sent information in address object            
+            
+            # #if the list are not empty 
+            # if self.phone_act_list:
+            #     self.sf.bulk.Account.upsert(self.phone_act_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True) #update information in account object
+            
+            # #if the list are not empty 
+            # if self.address_act_list:
+            #     self.sf.bulk.Account.upsert(self.address_act_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True) #update informacion in address object
+ 
+            # if self.houseHolds_list:
+            #    self.sf.bulk.account.insert(self.houseHolds_list, batch_size='auto',use_serial=True) #sent information in account(household) object            
+            
+   
+            if(self.contacts_list):
+                results = self.sf.bulk.Contact.upsert(self.contacts_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True) #update information in contact object
+                for result in results:
+                    # Si la inserción fue exitosa, añade el ID a la lista
+                    if result['success']:
+                        self.contacts_id_list.append(result['id'])
 
-        if self.address_list:
-            self.sf.bulk.npsp__Address__c.insert(self.address_list, batch_size='auto',use_serial=True)
-        if self.account_list:  
-            self.sf.bulk.Account.upsert(self.account_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)
-        if self.phone_list:
-            self.sf.bulk.vnfp__Phone__c.insert(self.phone_list, batch_size = 'auto', use_serial = True)
-        if self.phone_act_list:
-            self.sf.bulk.Account.upsert(self.phone_act_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)
-        if self.address_act_list:
-            #self.sf.bulk.npsp__Address__c.insert(self.address_list, batch_size='auto',use_serial=True)
-            self.sf.bulk.Account.upsert(self.address_act_list, 'Auctifera__Implementation_External_ID__c', batch_size='auto',use_serial=True)
+                self.contacts_accounts_id = self.get_account_id(self.contacts_id_list)
+            
+            # # print(self.contacts_phones_list)
+            # if(self.contacts_phones_list):
+            #      print(self.sf.bulk.vnfp__Legacy_Data__c.insert(self.contacts_phones_list, batch_size='auto',use_serial=True)) 
+                    
+            # if(self.contacts_emails_list):
+            #     print(self.sf.bulk.vnfp__Legacy_Data__c.insert(self.contacts_emails_list, batch_size='auto',use_serial=True)) 
 
+            # if(self.contacts_address_list):
+            #     print(self.sf.bulk.npsp__Address__c.insert(self.contacts_address_list, batch_size='auto',use_serial=True))
 
+            # if self.contacts_address_list:
+            #     print(self.sf.bulk.npsp__Address__c.insert(self.contacts_address_list, batch_size='auto',use_serial=True)) #sent information in address object
+        print(self.contacts_accounts_id)
 class Adapter:
     def __init__(self, report_names):
         self.data_processor = DataProcessor()
@@ -351,17 +640,19 @@ class Adapter:
         for report_name, salesforce_processor in self.salesforce_processors:
             salesforce_processor.process_csv()
 
-report_names = ["Veevart Organizations Report test","Veevart Organization Addresses Report test", "Veevart Organization Phones Report test"]
-adapter = Adapter(report_names)
-adapter.process_data()
+
+report_names = ["Veevart Organizations Report test","Veevart Organization Addresses Report test", "Veevart Organization Phones Report test", "Veevart HouseHolds Report test", "Veevart Contacts Report test", "Veevart Contacts Report Address test", "Veevart Contacts Report Email test", "Veevart Contacts Report Email test", "Veevart Contacts Report Phones test"]
+# adapter = Adapter(report_names)
+# adapter.process_data()
 
 ###########################################################################
 #Uso de las clases por separado
 ###########################################################################
 #class SalesforceProcessor:
 # Uso de la clase
-#processor = SalesforceProcessor('../EventsAltru/output.csv')
-#processor.process_csv()
+for report_name in report_names:
+    processor = SalesforceProcessor(report_name)
+    processor.process_csv()
 
 # Uso de la clase
 #class DataProcessor
