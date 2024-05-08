@@ -115,6 +115,44 @@ class DataProcessor:
 
         self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
 
+    def modify_csv_phones(self, object_key):
+        csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
+        body = csv_obj['Body']
+        csv_string = body.read().decode('utf-8')
+        f = StringIO(csv_string)
+        reader = csv.reader(f, delimiter=';')
+        headers = next(reader)
+        headers[0] = headers[0].replace('\ufeff', '')  
+        data = list(reader)
+        print('headers', headers)
+        print('data', data)
+
+        name_index = headers.index('"Name"')
+        last_name_index = headers.index("Last/Organization/Group/Household name")
+        phone_index = headers.index('Phones\\Number')
+
+        for row in data:
+            # Dejar solo la primera letra en la columna de nombre
+            if row[name_index]:
+                row[name_index] = row[name_index][:5]
+
+            # Dejar solo la primera palabra en la columna de apellido y agregar 'x' al principio y al final
+            if row[last_name_index]:
+                first_word = row[last_name_index].split()[0]
+                row[last_name_index] = 'x' + first_word + 'x'
+
+            # Dejar solo los 3 primeros números en la columna de teléfono
+            if row[phone_index]:
+                row[phone_index] = row[phone_index][:5]
+        f = StringIO()
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(headers)
+        writer.writerows(data)
+
+        csv_output_string = f.getvalue()
+
+        self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
+
     def display_csv(self, object_key):
         csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
         body = csv_obj['Body']
@@ -129,7 +167,8 @@ class DataProcessor:
 processor = DataProcessor(os.getenv('BUCKET_NAME'))
 #processor.modify_csv_names('Veevart Organizations Report test.csv')
 #processor.modify_csv_address('Veevart Organization Addresses Report test.csv')
-processor.display_csv('Veevart Organization Addresses Report test.csv')
+# processor.modify_csv_phones('Veevart Organization Phones Report test .csv')
+processor.display_csv('Veevart Organization Phones Report test .csv')
 # reports = ["Veevart Organizations Report test", "Veevart Organization Addresses Report test", "Veevart Organization Phones Report test"]
 # for report in reports:
 #     processor.process_data(report)
