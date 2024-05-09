@@ -42,8 +42,6 @@ class DataProcessor:
         headers = next(reader)
         headers[0] = headers[0].replace('\ufeff', '')  
         data = list(reader)
-        print('headers', headers)
-        print('data', data)
         email_index = headers.index("Email Addresses\\Email address")
         web_address_index = headers.index("Web address")
         name_index = headers.index('"Name"')
@@ -84,8 +82,6 @@ class DataProcessor:
         headers = next(reader)
         headers[0] = headers[0].replace('\ufeff', '')  
         data = list(reader)
-        print('headers', headers)
-        print('data', data)
         name_index = headers.index('"Name"')
         last_name_index = headers.index("Last/Organization/Group/Household name")
         address_index = headers.index('Addresses\\Address')
@@ -124,24 +120,19 @@ class DataProcessor:
         headers = next(reader)
         headers[0] = headers[0].replace('\ufeff', '')  
         data = list(reader)
-        print('headers', headers)
-        print('data', data)
 
         name_index = headers.index('"Name"')
         last_name_index = headers.index("Last/Organization/Group/Household name")
         phone_index = headers.index('Phones\\Number')
 
         for row in data:
-            # Dejar solo la primera letra en la columna de nombre
             if row[name_index]:
                 row[name_index] = row[name_index][:5]
 
-            # Dejar solo la primera palabra en la columna de apellido y agregar 'x' al principio y al final
             if row[last_name_index]:
                 first_word = row[last_name_index].split()[0]
                 row[last_name_index] = 'x' + first_word + 'x'
 
-            # Dejar solo los 3 primeros números en la columna de teléfono
             if row[phone_index]:
                 row[phone_index] = row[phone_index][:5]
         f = StringIO()
@@ -153,6 +144,145 @@ class DataProcessor:
 
         self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
 
+    def modify_csv_households(self, object_key):
+        csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
+        body = csv_obj['Body']
+        csv_string = body.read().decode('utf-8')
+        f = StringIO(csv_string)
+        reader = csv.reader(f, delimiter=';')
+        headers = next(reader)
+        headers[0] = headers[0].replace('\ufeff', '')  
+        data = list(reader)
+        name_index = headers.index('"Name"')
+
+        for row in data:
+            if row[name_index]:
+                row[name_index] = row[name_index][:5]
+        
+        f = StringIO()
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(headers)
+        writer.writerows(data)
+        csv_output_string = f.getvalue()
+        self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
+
+    def modify_csv_contacs(self, object_key):
+        csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
+        body = csv_obj['Body']
+        csv_string = body.read().decode('utf-8')
+        f = StringIO(csv_string)
+        reader = csv.reader(f, delimiter=';')
+        headers = next(reader)
+        headers[0] = headers[0].replace('\ufeff', '')  
+        data = list(reader)
+        name_index = headers.index('"Name"')
+        last_name_index = headers.index('Last/Organization/Group/Household name')
+
+        for row in data:
+            if row[name_index]:
+                row[name_index] = row[name_index][:5]
+            if row[last_name_index]:
+                first_word = row[last_name_index].split()[0]
+                row[last_name_index] = 'x' + first_word + 'x'
+        
+        f = StringIO()
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(headers)
+        writer.writerows(data)
+        csv_output_string = f.getvalue()
+        self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
+
+    def modify_csv_phones(self, object_key):
+        csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
+        body = csv_obj['Body']
+        csv_string = body.read().decode('utf-8')
+        f = StringIO(csv_string)
+        reader = csv.reader(f, delimiter=';')
+        headers = next(reader)
+        headers[0] = headers[0].replace('\ufeff', '')  
+        data = list(reader)
+        name_index = headers.index('"Name"')
+        last_name_index = headers.index('Last/Organization/Group/Household name')
+        phone_index = headers.index('Phones\\Number')
+
+        for row in data:
+            if row[name_index]:
+                row[name_index] = row[name_index][:5]
+            if row[last_name_index]:
+                first_word = row[last_name_index].split()[0]
+                row[last_name_index] = 'x' + first_word + 'x'
+            if row[phone_index]:
+                row[phone_index] = row[phone_index][:5]
+        
+        f = StringIO()
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(headers)
+        writer.writerows(data)
+        csv_output_string = f.getvalue()
+        self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
+
+    def modify_csv_contacs_email(self, object_key):
+        csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
+        body = csv_obj['Body']
+        csv_string = body.read().decode('utf-8')
+        f = StringIO(csv_string)
+        reader = csv.reader(f, delimiter=';')
+        headers = next(reader)
+        headers[0] = headers[0].replace('\ufeff', '')  
+        data = list(reader)
+
+        name_index = headers.index('"Name"')
+        last_name_index = headers.index('Last/Organization/Group/Household name')                
+        email_index = headers.index('Email Addresses\\Email address')
+        for row in data:
+            if row[name_index]:
+                row[name_index] = row[name_index][:5]
+            if row[last_name_index]:
+                first_word = row[last_name_index].split()[0]
+                row[last_name_index] = 'x' + first_word + 'x'
+            if '@' in row[email_index]:
+                local, domain = row[email_index].split('@')
+                row[email_index] = local + '@tmail.comx'
+        
+        f = StringIO()
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(headers)
+        writer.writerows(data)
+        csv_output_string = f.getvalue()
+        self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
+
+    def modify_csv_contacs_address(self, object_key):
+        csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
+        body = csv_obj['Body']
+        csv_string = body.read().decode('utf-8')
+        f = StringIO(csv_string)
+        reader = csv.reader(f, delimiter=';')
+        headers = next(reader)
+        headers[0] = headers[0].replace('\ufeff', '')  
+        data = list(reader)
+        name_index = headers.index('"Name"')
+        last_name_index = headers.index('Last/Organization/Group/Household name')
+        address_index = headers.index('Addresses\\Address')
+        zip_index = headers.index('Addresses\\ZIP')
+
+        for row in data:
+            if row[address_index]:
+                row[address_index] = row[address_index].split()[0]
+            if row[zip_index]:
+                row[zip_index] = row[zip_index][:2]
+            if row[name_index]:
+                row[name_index] = row[name_index][:5]
+            if row[last_name_index]:
+                first_word = row[last_name_index].split()[0]
+                row[last_name_index] = 'x' + first_word + 'x'
+
+        f = StringIO()
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(headers)
+        writer.writerows(data)
+        csv_output_string = f.getvalue()
+        self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_output_string)
+                
     def display_csv(self, object_key):
         csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
         body = csv_obj['Body']
@@ -163,12 +293,14 @@ class DataProcessor:
         data = pd.read_csv(StringIO(csv_string), delimiter=';')
         print(data)
 
-
 processor = DataProcessor(os.getenv('BUCKET_NAME'))
 #processor.modify_csv_names('Veevart Organizations Report test.csv')
 #processor.modify_csv_address('Veevart Organization Addresses Report test.csv')
-# processor.modify_csv_phones('Veevart Organization Phones Report test .csv')
-processor.display_csv('Veevart Organization Phones Report test .csv')
-# reports = ["Veevart Organizations Report test", "Veevart Organization Addresses Report test", "Veevart Organization Phones Report test"]
-# for report in reports:
-#     processor.process_data(report)
+#processor.modify_csv_phones('Veevart Organization Phones Report test .csv')
+#processor.modify_csv_households('Veevart HouseHolds Report test.csv')
+#processor.modify_csv_contacs('Veevart Contacts Report test.csv')
+#processor.modify_csv_phones('Veevart Contacts Report Phones test.csv')
+#processor.modify_csv_contacs_email('Veevart Contacts Report Email test.csv')
+#processor.modify_csv_contacs_email('Veevart Contacts Report Email test.csv')
+#processor.modify_csv_contacs_address('Veevart Contacts Report Address test.csv')
+processor.display_csv('Veevart Contacts Report Address test.csv')
