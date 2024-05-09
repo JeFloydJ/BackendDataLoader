@@ -27,12 +27,6 @@ class DataProcessor:
         data = csv.reader(StringIO(csv_string))
         return data
 
-    def write_s3_object(self, object_key, data):
-        csv_buffer = StringIO()
-        csv_writer = csv.writer(csv_buffer)
-        csv_writer.writerows(data)
-        self.s3.put_object(Bucket=self.bucket_name, Key=object_key, Body=csv_buffer.getvalue())
-
     def modify_csv_names(self, object_key):
         csv_obj = self.s3.get_object(Bucket=self.bucket_name, Key=object_key)
         body = csv_obj['Body']
@@ -296,7 +290,7 @@ class DataProcessor:
 processor = DataProcessor(os.getenv('BUCKET_NAME'))
 #processor.modify_csv_names('Veevart Organizations Report test.csv')
 #processor.modify_csv_address('Veevart Organization Addresses Report test.csv')
-#processor.modify_csv_phones('Veevart Organization Phones Report test .csv')
+#processor.modify_csv_phones('Veevart Organization Phones Report test.csv')
 #processor.modify_csv_households('Veevart HouseHolds Report test.csv')
 #processor.modify_csv_contacs('Veevart Contacts Report test.csv')
 #processor.modify_csv_phones('Veevart Contacts Report Phones test.csv')
